@@ -30,6 +30,7 @@ public final class LegacyConfigScreen extends GuiScreen {
     private boolean enabled = LegacyConfig.enabled;
     private boolean onDamage = LegacyConfig.onDamage;
     private boolean linearDamage = LegacyConfig.linearDamage;
+    private boolean diagnostics = LegacyConfig.showDamageDiagnostics;
     private int linearMinIntensity = LegacyConfig.damageIntensityMin;
     private float linearFullHearts = LegacyConfig.linearFullHearts;
     private boolean onDeath = LegacyConfig.onDeath;
@@ -105,6 +106,8 @@ public final class LegacyConfigScreen extends GuiScreen {
                 toggle("Linear intensity for lost hearts", linearDamage)));
             scaleMinField = field(60, left, 115, contentWidth, Integer.toString(linearMinIntensity), 3);
             scaleHeartsField = field(61, left, 155, contentWidth, Float.toString(linearFullHearts), 6);
+            buttonList.add(new GuiButton(45, left, 185, contentWidth, 20,
+                toggle("Damage diagnostics", diagnostics)));
         } else {
             limits = new GuiTextField[7];
             int columnWidth = (contentWidth - 12) / 2;
@@ -272,6 +275,7 @@ public final class LegacyConfigScreen extends GuiScreen {
         LegacyConfig.enabled = enabled;
         LegacyConfig.onDamage = onDamage;
         LegacyConfig.linearDamage = linearDamage;
+        LegacyConfig.showDamageDiagnostics = diagnostics;
         LegacyConfig.damageIntensityMin = linearMinIntensity;
         LegacyConfig.linearFullHearts = linearFullHearts;
         LegacyConfig.onDeath = onDeath;
@@ -314,6 +318,10 @@ public final class LegacyConfigScreen extends GuiScreen {
             case 44:
                 linearDamage = !linearDamage;
                 button.displayString = toggle("Linear intensity for lost hearts", linearDamage);
+                return;
+            case 45:
+                diagnostics = !diagnostics;
+                button.displayString = toggle("Damage diagnostics", diagnostics);
                 return;
             case 40: onDamage = !onDamage; button.displayString = toggle("On damage", onDamage); return;
             case 41: onDeath = !onDeath; button.displayString = toggle("On death", onDeath); return;
@@ -380,8 +388,7 @@ public final class LegacyConfigScreen extends GuiScreen {
             fontRenderer.drawString("Starting shock intensity (%)", left, 101, 0xDDDDDD);
             fontRenderer.drawString("Maximum reached after this many lost hearts", left, 141, 0xDDDDDD);
             if (message.isEmpty()) {
-                drawCenteredString(fontRenderer, "Set maximum via Limits > Damage intensity.", mid, 180, 0xAACCFF);
-                drawCenteredString(fontRenderer, "Larger hits give proportionally stronger output.", mid, 192, 0xDDDDDD);
+                drawCenteredString(fontRenderer, "Maximum set under Limits > Damage intensity.", mid, 65, 0xAACCFF);
             }
         } else {
             int col = (contentWidth - 12) / 2;
