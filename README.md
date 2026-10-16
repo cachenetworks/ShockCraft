@@ -322,3 +322,8 @@ vanilla renames (`ResourceLocation`/`Identifier`, the `fromNamespaceAndPath` fac
 NeoForge half of `Entrypoint.kt` covers the 1.21 API break (`TickEvent.ClientTickEvent` became
 `ClientTickEvent.Post`, `ConfigScreenHandler.ConfigScreenFactory` became `IConfigScreenFactory`,
 and `@Mod` gained its `dist` element).
+
+
+### Classic Forge compatibility (fork extension)
+
+This fork has a standalone Minecraft **1.12.2 Forge** port in [forge-legacy](forge-legacy/README.md). Its Java 8/ForgeGradle 2.3 CI build has passed; actual in-game testing is still needed. It is **not** included in the modern Fabric/NeoForge build matrix, and Forge targets newer than 1.12.2 are still on the roadmap rather than released.
