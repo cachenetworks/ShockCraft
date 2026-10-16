@@ -13,6 +13,7 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
+import net.minecraftforge.fml.common.gameevent.InputEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.input.Keyboard;
@@ -20,7 +21,8 @@ import org.lwjgl.input.Keyboard;
 /** Forge 1.12.2 implementation. All physical requests are opt-in and client-side. */
 @Mod(modid = LegacyShockCraft.MOD_ID, name = "ShockCraft (Forge Legacy)",
     version = LegacyShockCraft.VERSION, acceptedMinecraftVersions = "[1.12.2]",
-    acceptableRemoteVersions = "*", clientSideOnly = true)
+    acceptableRemoteVersions = "*", clientSideOnly = true,
+    guiFactory = "openshock.integrations.minecraft.legacy.LegacyModGuiFactory")
 public final class LegacyShockCraft {
     public static final String MOD_ID = "shockcraft";
     public static final String VERSION = "2.0.0-beta.1-legacy.1";
@@ -50,7 +52,7 @@ public final class LegacyShockCraft {
         public void tick(TickEvent.ClientTickEvent event) {
             if (event.phase != TickEvent.Phase.END) return;
             Minecraft mc = Minecraft.getMinecraft();
-            if (openSettings.isPressed()) mc.displayGuiScreen(new LegacyConfigScreen(mc.currentScreen));
+            openIfPressed(mc);
 
             EntityPlayerSP player = mc.player;
             // Do not mistake respawns, world switches and menu transitions for damage.
@@ -86,6 +88,21 @@ public final class LegacyShockCraft {
             previousHealth = health;
             previousLevel = level;
             wasDead = dead;
+        }
+
+        /**
+         * Key input events fire as Minecraft processes a press. Keeping the
+         * tick check as a fallback covers older Forge/modded input setups.
+         */
+        @SubscribeEvent
+        public void keyInput(InputEvent.KeyInputEvent event) {
+            openIfPressed(Minecraft.getMinecraft());
+        }
+
+        private void openIfPressed(Minecraft mc) {
+            if (openSettings.isPressed() && mc.currentScreen == null) {
+                mc.displayGuiScreen(new LegacyConfigScreen(null));
+            }
         }
 
         @SubscribeEvent
