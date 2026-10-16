@@ -72,7 +72,7 @@ public final class LegacyConfig {
         shockerIds = account.getProperty("shockerIds", "").trim();
     }
 
-    public static void saveBehavior() {
+    public static boolean saveBehavior() {
         Properties p = new Properties();
         p.setProperty("enabled", String.valueOf(enabled));
         p.setProperty("onDamage", String.valueOf(onDamage));
@@ -87,7 +87,20 @@ public final class LegacyConfig {
         p.setProperty("durationMs", String.valueOf(durationMs));
         p.setProperty("cooldownMs", String.valueOf(cooldownMs));
         p.setProperty("minDamageHearts", String.valueOf(minDamageHearts));
-        write(behaviorPath(), p, false);
+        return write(behaviorPath(), p, false);
+    }
+
+    /** Safely persist account details outside the Minecraft instance. */
+    public static boolean saveAccount(String url, String token, String ids) {
+        Properties p = new Properties();
+        p.setProperty("apiBaseUrl", url);
+        p.setProperty("apiToken", token);
+        p.setProperty("shockerIds", ids);
+        if (!write(accountPath(), p, true)) return false;
+        apiBaseUrl = url;
+        apiToken = token;
+        shockerIds = ids;
+        return true;
     }
 
     /** Generate an empty template but never overwrite a token the user already supplied. */
@@ -113,7 +126,7 @@ public final class LegacyConfig {
         return p;
     }
 
-    private static void write(Path path, Properties p, boolean privateFile) {
+    private static boolean write(Path path, Properties p, boolean privateFile) {
         try {
             Files.createDirectories(path.getParent());
             try (OutputStream stream = Files.newOutputStream(path)) {
@@ -125,8 +138,10 @@ public final class LegacyConfig {
                         EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
                 } catch (UnsupportedOperationException ignored) { /* Windows ACLs */ }
             }
-        } catch (IOException ex) {
+            return true;
+        } catch (IOException | SecurityException ex) {
             LegacyShockCraft.LOG.error("Could not write ShockCraft settings at {}", path);
+            return false;
         }
     }
 
