@@ -54,7 +54,8 @@ public final class LegacyShockCraft {
 
             EntityPlayerSP player = mc.player;
             // Do not mistake respawns, world switches and menu transitions for damage.
-            if (player == null || mc.currentScreen != null || player.isCreative() || player.isSpectator()) {
+            if (player == null || (mc.currentScreen != null && !(mc.currentScreen instanceof net.minecraft.client.gui.GuiGameOver))
+                || player.isCreative() || player.isSpectator()) {
                 previousPlayer = null;
                 return;
             }
