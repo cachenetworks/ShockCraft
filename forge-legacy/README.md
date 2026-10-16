@@ -82,6 +82,25 @@ a missing attacker as "source not reported by server", rather than guessing
 that a nearby player was responsible. A server-side bridge would be needed
 for reliable PvP attacker names.
 
+### Damage trigger troubleshooting
+
+The Scaling tab has a **Damage diagnostics** toggle, enabled by default
+during this beta. After damage in a world, the action bar explains whether
+health loss was detected, a legacy saved minimum damage threshold filtered
+the hit, the account/physical-output setting disabled sending, intensity is
+0%, the request was held by cooldown, or the API refused the request.
+Turn diagnostics off when finished testing.
+
+**Old settings are intentionally preserved.** A 1-heart threshold saved by
+a previous build remains at 1 until you visit **Limits > Min damage** and
+set it to `0`. Weak player punches can otherwise be filtered out. The
+mod now also samples health while an inventory is open in multiplayer;
+opening an inventory no longer resets its damage detection state.
+
+A successful Gradle build and mock/automated tests do not replace an
+in-game test on your Forge 1.12.2 client. Do not share your API token in
+logs or screenshots.
+
 ### Other Forge versions: implementation tracker
 
 This table is **a roadmap, not a list of working jars**. Every supported version
