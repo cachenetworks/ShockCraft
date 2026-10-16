@@ -6,7 +6,8 @@ names and Forge events. Adding 1.12.2 to the modern Stonecutter matrix does not 
 
 ## First implementation: Forge 1.12.2
 
-- Minecraft 1.12.2, Forge 14.23.5.2864
+- Minecraft 1.12.2, built against Forge 14.23.5.2847 (FG2.3 userdev artifact)
+- Intended for newer 1.12.2 Forge installs too, once tested in game
 - Java 8 and Gradle 4.10.3
 - Client-side only; no server installation needed
 - Optional damage, death, level-up, and chat-phrase OpenShock triggers
