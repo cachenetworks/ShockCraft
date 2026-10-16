@@ -11,7 +11,8 @@ names and Forge events. Adding 1.12.2 to the modern Stonecutter matrix does not 
 - Java 8 and Gradle 4.10.3
 - Client-side only; no server installation needed
 - Optional damage, death, level-up, and chat-phrase OpenShock triggers
-- Press O (remappable) to open a native settings screen
+- Press O in-world (remappable), or use Mods > ShockCraft > Config from the main menu
+- Account/Triggers/Limits tabs edit API URL, token, UUIDs and other settings in-game
 - Configurable intensity, duration, damage threshold, cooldown
 - Physical output disabled by default and limited to a 50% intensity maximum,
   2-second duration and 3-second minimum cooldown
@@ -35,35 +36,31 @@ gradle --no-daemon clean build
 The production jar will be placed in build/libs. The root gradlew is NOT
 compatible with legacy ForgeGradle; do not build this folder with it.
 
-### Configure
+### Configure entirely in game
 
-Launch Forge 1.12.2 with the mod once to generate a credential template.
-Close the game before editing these files.
+1. Install the compiled JAR in the Minecraft Forge 1.12.2 instance.
+2. At the main menu, open **Mods > ShockCraft > Config**. This is
+   available even if the O key conflicts with another mod. Alternatively
+   press **O** (remappable in Controls) while playing a world.
+3. On **Account**, enter your API URL (default https://api.openshock.app).
+   Click **Edit token** and paste your own token created in the OpenShock
+   dashboard. The mod does not generate tokens. Never share yours.
+4. Enter your shocker UUID(s), separated by commas for multiple devices.
+5. Set preferred event toggles under **Triggers** and duration, intensity
+   and cooldown under **Limits**.
+6. Enable **Physical output** on Account only with the device wearer's
+   explicit consent. It is OFF by default.
+7. Press **Save**. **Cancel/ESC** discards unsaved changes.
 
-Windows account file:
-%APPDATA%\OpenShock\ShockCraft\legacy-1.12.2.properties
+The account token is hidden in the UI unless the Edit token button is used.
+It is saved to a separate OS-user-owned account file, not the instance:
+Windows: %APPDATA%\OpenShock\ShockCraft\legacy-1.12.2.properties
+Linux: ~/.config/OpenShock/ShockCraft/legacy-1.12.2.properties
+macOS: ~/Library/Application Support/OpenShock/ShockCraft/legacy-1.12.2.properties
 
-Linux account file:
-~/.config/OpenShock/ShockCraft/legacy-1.12.2.properties
-
-macOS account file:
-~/Library/Application Support/OpenShock/ShockCraft/legacy-1.12.2.properties
-
-Fill in:
-
-~~~properties
-apiBaseUrl=https://api.openshock.app
-apiToken=YOUR_PRIVATE_API_TOKEN
-shockerIds=00000000-0000-0000-0000-000000000000
-~~~
-
-Replace the placeholder with your actual shocker UUID. For multiple IDs, separate
-with commas. Never publish your real token. Restart the game, press O to configure
-trigger toggles, and explicitly enable physical output only with the wearer's consent.
-
-Other options are saved in the instance at config/ShockCraft-legacy.properties.
-The token remains in your personal account directory, outside exported modpacks.
-It is not encrypted: secure your operating-system login.
+Other behavior settings are saved in the game's
+config/ShockCraft-legacy.properties file. Manual file editing is not needed.
+The account token is still plaintext on disk (not encrypted).
 
 ### Other Forge versions: implementation tracker
 
