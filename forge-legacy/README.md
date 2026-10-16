@@ -17,8 +17,9 @@ names and Forge events. Adding 1.12.2 to the modern Stonecutter matrix does not 
   2-second duration and 3-second minimum cooldown
 - No credentials inside a modpack's game instance
 
-**Status: source-only prototype.** The separate CI build and actual in-game launch
-must pass before this should be published or described as a working release.
+**Status: CI-compiling prototype.** The Forge 1.12.2 Gradle build succeeded and
+produced a jar on GitHub Actions. An actual in-game launch and behavior test
+are still required before this should be published as a working release.
 Modern shocker picker, full YACL UI, fine-grained damage filtering, overlays,
 collars/remotes, and networked effects are not ported.
 
@@ -71,7 +72,7 @@ requires its own matching Forge/Java/toolchain, API adaptation, and real client 
 
 | Minecraft | Planned Forge versions | Status |
 |---|---|---|
-| 1.12 | 1.12.2 | Source added; build and game tests pending |
+| 1.12 | 1.12.2 | Build passed; in-game tests pending |
 | 1.13 | 1.13.2 | Pending |
 | 1.14 | 1.14.2, 1.14.3, 1.14.4 | Pending |
 | 1.15 | 1.15, 1.15.1, 1.15.2 | Pending |
