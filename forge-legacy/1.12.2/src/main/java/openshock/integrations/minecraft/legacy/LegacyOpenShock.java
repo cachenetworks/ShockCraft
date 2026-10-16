@@ -25,6 +25,13 @@ public final class LegacyOpenShock {
     private static final AtomicBoolean BUSY = new AtomicBoolean(false);
     private static long lastSentAt;
 
+    // Persistent local telemetry for the debug HUD. No account secrets.
+    private static volatile String lastDiagnostic = "Waiting for client tick";
+    private static volatile long lastDiagnosticAt;
+
+    public static String lastDiagnostic() { return lastDiagnostic; }
+    public static long lastDiagnosticAt() { return lastDiagnosticAt; }
+
     public enum SubmitResult {
         QUEUED("request queued"),
         DISABLED("physical output OFF"),
@@ -39,6 +46,8 @@ public final class LegacyOpenShock {
 
     /** Local debug status, never includes API keys, shocker IDs or payloads. */
     public static void showDiagnostic(String message) {
+        lastDiagnostic = message;
+        lastDiagnosticAt = System.currentTimeMillis();
         if (!LegacyConfig.showDamageDiagnostics) return;
         Minecraft.getMinecraft().addScheduledTask(() -> {
             if (Minecraft.getMinecraft().player != null) {
