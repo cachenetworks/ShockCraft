@@ -18,6 +18,8 @@ public final class LegacyConfig {
     public static boolean enabled = false;
     public static boolean onDamage = true, onDeath = true, onLevelUp = false, onChat = false;
     public static boolean linearDamage = true;
+    // Detailed local troubleshooting messages; never displays credentials.
+    public static boolean showDamageDiagnostics = true;
     public static int damageIntensityMin = 5;
     public static float linearFullHearts = 10.0F;
     public static int damageIntensity = 20, deathIntensity = 30, levelIntensity = 15, chatIntensity = 15;
@@ -54,6 +56,7 @@ public final class LegacyConfig {
         enabled = bool(p, "enabled", false);
         onDamage = bool(p, "onDamage", true);
         linearDamage = bool(p, "linearDamage", true);
+        showDamageDiagnostics = bool(p, "showDamageDiagnostics", true);
         damageIntensityMin = number(p, "damageIntensityMin", 5, 0, 100);
         onDeath = bool(p, "onDeath", true);
         onLevelUp = bool(p, "onLevelUp", false);
@@ -90,6 +93,7 @@ public final class LegacyConfig {
         p.setProperty("enabled", String.valueOf(enabled));
         p.setProperty("onDamage", String.valueOf(onDamage));
         p.setProperty("linearDamage", String.valueOf(linearDamage));
+        p.setProperty("showDamageDiagnostics", String.valueOf(showDamageDiagnostics));
         p.setProperty("damageIntensityMin", String.valueOf(damageIntensityMin));
         p.setProperty("linearFullHearts", String.valueOf(linearFullHearts));
         p.setProperty("onDeath", String.valueOf(onDeath));
