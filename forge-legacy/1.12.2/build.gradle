@@ -23,3 +23,8 @@ minecraft {
     runDir = 'run'
     makeObfSourceJar = false
 }
+
+// Pure damage-scaling tests; the Minecraft client is not needed for these.
+dependencies {
+    testCompile 'junit:junit:4.13.2'
+}

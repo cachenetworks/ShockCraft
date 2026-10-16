@@ -14,8 +14,9 @@ names and Forge events. Adding 1.12.2 to the modern Stonecutter matrix does not 
 - Press O in-world (remappable), or use Mods > ShockCraft > Config from the main menu
 - Account/Triggers/Limits tabs edit API URL, token, UUIDs and other settings in-game
 - Configurable intensity, duration, damage threshold, cooldown
-- Physical output disabled by default and limited to a 50% intensity maximum,
-  2-second duration and 3-second minimum cooldown
+- Physical output disabled by default. The port no longer imposes the prior
+  extra 50% / 2-second / 3-second hard caps; it validates request-field bounds.
+  Set your own intensity and duration conservatively.
 - No credentials inside a modpack's game instance
 
 **Status: CI-compiling prototype.** The Forge 1.12.2 Gradle build succeeded and
@@ -46,8 +47,12 @@ compatible with legacy ForgeGradle; do not build this folder with it.
    Click **Edit token** and paste your own token created in the OpenShock
    dashboard. The mod does not generate tokens. Never share yours.
 4. Enter your shocker UUID(s), separated by commas for multiple devices.
-5. Set preferred event toggles under **Triggers** and duration, intensity
-   and cooldown under **Limits**.
+5. Set preferred event toggles under **Triggers**; turn on **Linear damage**
+   under **Scaling** and choose the starting intensity and how many lost hearts
+   reach the maximum. Under **Limits**, "Damage intensity" is the maximum for
+   linear scaling (or the fixed intensity with linear mode off).
+   Duration and cooldown are also configurable. Set "Min damage" to 0 for
+   weak PvP hits; older config files keep any previously saved threshold.
 6. Enable **Physical output** on Account only with the device wearer's
    explicit consent. It is OFF by default.
 7. Press **Save**. **Cancel/ESC** discards unsaved changes.
@@ -61,6 +66,21 @@ macOS: ~/Library/Application Support/OpenShock/ShockCraft/legacy-1.12.2.properti
 Other behavior settings are saved in the game's
 config/ShockCraft-legacy.properties file. Manual file editing is not needed.
 The account token is still plaintext on disk (not encrypted).
+
+### Linear damage scaling and multiplayer attribution
+
+Default linear mode maps lost hearts to an intensity between the configured
+minimum (default 5%) and damage maximum (default 20%). Default saturation is
+10 hearts: half a heart produces approximately 6%, five hearts approximately
+13%, and ten hearts 20%. The result is clamped to the chosen range, never
+exceeds the user's configured damage maximum, and scales intensity **only**
+(not duration). Disable Linear damage to use the configured fixed intensity.
+
+Forge 1.12.2 multiplayer often does not synchronize attacker identity or
+damage source to the client. ShockCraft observes actual health loss, but labels
+a missing attacker as "source not reported by server", rather than guessing
+that a nearby player was responsible. A server-side bridge would be needed
+for reliable PvP attacker names.
 
 ### Other Forge versions: implementation tracker
 

@@ -30,12 +30,12 @@ public final class LegacyOpenShock {
         if (!LegacyConfig.enabled || LegacyConfig.apiToken.isEmpty()
             || LegacyConfig.shockerIds.trim().isEmpty() || requestedIntensity <= 0) return;
         final long now = System.currentTimeMillis();
-        if (now - lastSentAt < Math.max(3000, LegacyConfig.cooldownMs)) return;
+        if (now - lastSentAt < Math.max(0, LegacyConfig.cooldownMs)) return;
         if (!BUSY.compareAndSet(false, true)) return;
         lastSentAt = now;
 
-        final int intensity = Math.max(1, Math.min(50, requestedIntensity));
-        final int durationMs = Math.max(100, Math.min(2000, LegacyConfig.durationMs));
+        final int intensity = Math.max(1, Math.min(100, requestedIntensity));
+        final int durationMs = Math.max(100, Math.min(30000, LegacyConfig.durationMs));
         final String baseUrl = LegacyConfig.apiBaseUrl;
         final String token = LegacyConfig.apiToken;
         final String ids = LegacyConfig.shockerIds;

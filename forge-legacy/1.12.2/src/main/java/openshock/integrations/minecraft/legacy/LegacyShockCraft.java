@@ -74,11 +74,18 @@ public final class LegacyShockCraft {
             if (dead && !wasDead && LegacyConfig.onDeath) {
                 LegacyOpenShock.fire("Death: " + damageName(player.getLastDamageSource()),
                     LegacyConfig.deathIntensity);
-            } else if (!dead && health < previousHealth && LegacyConfig.onDamage) {
+            } else if (health < previousHealth && LegacyConfig.onDamage) {
+                // Every real health decrease counts when the threshold is zero,
+                // including weak PvP hits and lethal damage if death-trigger is off.
                 float heartsLost = (previousHealth - health) / 2.0F;
-                if (heartsLost >= LegacyConfig.minDamageHearts) {
-                    LegacyOpenShock.fire("Damage: " + damageName(player.getLastDamageSource()),
-                        LegacyConfig.damageIntensity);
+                if (heartsLost > 0 && heartsLost >= LegacyConfig.minDamageHearts) {
+                    int intensity = LegacyConfig.linearDamage
+                        ? DamageScaling.linear(heartsLost, LegacyConfig.damageIntensityMin,
+                            LegacyConfig.damageIntensity, LegacyConfig.linearFullHearts)
+                        : LegacyConfig.damageIntensity;
+                    String label = "Damage (" + String.format(java.util.Locale.ROOT, "%.1f", heartsLost)
+                        + " hearts): " + damageName(player.getLastDamageSource());
+                    LegacyOpenShock.fire(label, intensity);
                 }
             }
             if (!dead && level > previousLevel && LegacyConfig.onLevelUp) {
@@ -124,7 +131,9 @@ public final class LegacyShockCraft {
         }
 
         private static String damageName(DamageSource source) {
-            if (source == null) return "unknown";
+            // 1.12.2 multiplayer clients commonly have no attacker/source
+            // information. Don't invent a PvP attacker from proximity.
+            if (source == null) return "source not reported by server";
             String kind = source.getDamageType();
             return source.getTrueSource() == null ? kind :
                 source.getTrueSource().getName() + " (" + kind + ")";

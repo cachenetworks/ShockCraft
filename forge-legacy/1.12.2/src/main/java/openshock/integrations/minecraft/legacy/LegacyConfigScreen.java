@@ -16,7 +16,7 @@ import java.util.Locale;
  * without touching a file. ESC/Cancel discards changes. Save is explicit.
  */
 public final class LegacyConfigScreen extends GuiScreen {
-    private enum Page { ACCOUNT, TRIGGERS, LIMITS }
+    private enum Page { ACCOUNT, TRIGGERS, SCALING, LIMITS }
 
     private final GuiScreen parent;
     private Page page = Page.ACCOUNT;
@@ -29,6 +29,9 @@ public final class LegacyConfigScreen extends GuiScreen {
     private String phrase = LegacyConfig.chatPhrase;
     private boolean enabled = LegacyConfig.enabled;
     private boolean onDamage = LegacyConfig.onDamage;
+    private boolean linearDamage = LegacyConfig.linearDamage;
+    private int linearMinIntensity = LegacyConfig.damageIntensityMin;
+    private float linearFullHearts = LegacyConfig.linearFullHearts;
     private boolean onDeath = LegacyConfig.onDeath;
     private boolean onLevel = LegacyConfig.onLevelUp;
     private boolean onChat = LegacyConfig.onChat;
@@ -43,6 +46,7 @@ public final class LegacyConfigScreen extends GuiScreen {
 
     private GuiTextField urlField, tokenField, idsField, phraseField;
     private GuiTextField[] limits;
+    private GuiTextField scaleMinField, scaleHeartsField;
     private boolean editingToken;
     private String message = "";
     private int messageColor = 0xFFFF66;
@@ -59,11 +63,12 @@ public final class LegacyConfigScreen extends GuiScreen {
         final int contentWidth = Math.min(312, width - 22);
         final int left = mid - contentWidth / 2;
 
-        int tabWidth = Math.min(102, (width - 30) / 3);
-        int tabsLeft = mid - tabWidth * 3 / 2;
+        int tabWidth = Math.min(80, (width - 22) / 4);
+        int tabsLeft = mid - tabWidth * 2;
         buttonList.add(new GuiButton(1, tabsLeft, 34, tabWidth, 20, "Account"));
         buttonList.add(new GuiButton(2, tabsLeft + tabWidth, 34, tabWidth, 20, "Triggers"));
-        buttonList.add(new GuiButton(3, tabsLeft + tabWidth * 2, 34, tabWidth, 20, "Limits"));
+        buttonList.add(new GuiButton(4, tabsLeft + tabWidth * 2, 34, tabWidth, 20, "Scaling"));
+        buttonList.add(new GuiButton(3, tabsLeft + tabWidth * 3, 34, tabWidth, 20, "Limits"));
 
         // Every tab shares the bottom controls; never save a half-typed token
         // just because a user navigated between sections.
@@ -76,6 +81,8 @@ public final class LegacyConfigScreen extends GuiScreen {
         idsField = null;
         phraseField = null;
         limits = null;
+        scaleMinField = null;
+        scaleHeartsField = null;
 
         if (page == Page.ACCOUNT) {
             urlField = field(20, left, 81, contentWidth, url, 256);
@@ -93,6 +100,11 @@ public final class LegacyConfigScreen extends GuiScreen {
             buttonList.add(new GuiButton(42, left, 115, toggleWidth, 20, toggle("On XP level up", onLevel)));
             buttonList.add(new GuiButton(43, left, 139, toggleWidth, 20, toggle("On chat phrase", onChat)));
             phraseField = field(23, left, 177, contentWidth, phrase, 128);
+        } else if (page == Page.SCALING) {
+            buttonList.add(new GuiButton(44, left, 69, contentWidth, 20,
+                toggle("Linear intensity for lost hearts", linearDamage)));
+            scaleMinField = field(60, left, 115, contentWidth, Integer.toString(linearMinIntensity), 3);
+            scaleHeartsField = field(61, left, 155, contentWidth, Float.toString(linearFullHearts), 6);
         } else {
             limits = new GuiTextField[7];
             int columnWidth = (contentWidth - 12) / 2;
@@ -133,6 +145,7 @@ public final class LegacyConfigScreen extends GuiScreen {
         // Limit inputs are validated when navigating off them, before discarding
         // their text; otherwise a typo could silently turn into a previous value.
         if (page == Page.LIMITS && !captureLimits()) return;
+        if (page == Page.SCALING && !captureScaling()) return;
         page = next;
         message = "";
         initGui();
@@ -150,12 +163,13 @@ public final class LegacyConfigScreen extends GuiScreen {
     private boolean captureLimits() {
         if (limits == null) return true;
         Integer[] values = new Integer[6];
-        final int[] min = {0, 0, 0, 0, 100, 3000};
-        final int[] max = {50, 50, 50, 50, 2000, 60000};
+        final int[] min = {0, 0, 0, 0, 100, 0};
+        final int[] max = {100, 100, 100, 100, 30000, 60000};
         for (int i = 0; i < values.length; i++) {
             values[i] = parseInt(limits[i], min[i], max[i]);
             if (values[i] == null) {
-                message = "Invalid limit: keep intensities 0-50%, duration 100-2000ms, cooldown 3000-60000ms.";
+                message = "Invalid value: intensity 0-100, duration 100-30000, cooldown 0-60000.";
+
                 messageColor = 0xFF7777;
                 return false;
             }
@@ -166,8 +180,8 @@ public final class LegacyConfigScreen extends GuiScreen {
         } catch (NumberFormatException e) {
             hearts = Float.NaN;
         }
-        if (!Float.isFinite(hearts) || hearts < 0.5F || hearts > 20.0F) {
-            message = "Minimum damage must be between 0.5 and 20 hearts.";
+        if (!Float.isFinite(hearts) || hearts < 0.0F || hearts > 20.0F) {
+            message = "Minimum damage must be between 0 and 20 hearts.";
             messageColor = 0xFF7777;
             return false;
         }
@@ -181,9 +195,40 @@ public final class LegacyConfigScreen extends GuiScreen {
         return true;
     }
 
+    private boolean captureScaling() {
+        if (scaleMinField == null) return true;
+        Integer min = parseInt(scaleMinField, 0, 100);
+        if (min == null) {
+            message = "Minimum linear intensity must be between 0 and 100%.";
+            messageColor = 0xFF7777;
+            return false;
+        }
+        float fullHearts;
+        try {
+            fullHearts = Float.parseFloat(scaleHeartsField.getText().trim());
+        } catch (NumberFormatException e) {
+            fullHearts = Float.NaN;
+        }
+        if (!Float.isFinite(fullHearts) || fullHearts < 0.5F || fullHearts > 100F) {
+            message = "Full strength after 0.5 to 100 hearts of damage.";
+            messageColor = 0xFF7777;
+            return false;
+        }
+        linearMinIntensity = min;
+        linearFullHearts = fullHearts;
+        return true;
+    }
+
     private void save() {
         captureCurrentFields();
-        if (!captureLimits()) return;
+        if (!captureLimits() || !captureScaling()) return;
+        if (linearDamage && linearMinIntensity > damageIntensity) {
+            page = Page.SCALING;
+            message = "Linear minimum must not exceed Damage intensity (maximum).";
+            messageColor = 0xFF7777;
+            initGui();
+            return;
+        }
         try {
             URI parsed = URI.create(url);
             if (!"https".equalsIgnoreCase(parsed.getScheme()) ||
@@ -226,6 +271,9 @@ public final class LegacyConfigScreen extends GuiScreen {
         }
         LegacyConfig.enabled = enabled;
         LegacyConfig.onDamage = onDamage;
+        LegacyConfig.linearDamage = linearDamage;
+        LegacyConfig.damageIntensityMin = linearMinIntensity;
+        LegacyConfig.linearFullHearts = linearFullHearts;
         LegacyConfig.onDeath = onDeath;
         LegacyConfig.onLevelUp = onLevel;
         LegacyConfig.onChat = onChat;
@@ -252,6 +300,7 @@ public final class LegacyConfigScreen extends GuiScreen {
             case 1: changePage(Page.ACCOUNT); return;
             case 2: changePage(Page.TRIGGERS); return;
             case 3: changePage(Page.LIMITS); return;
+            case 4: changePage(Page.SCALING); return;
             case 30:
                 editingToken = !editingToken;
                 tokenField.setVisible(editingToken);
@@ -261,6 +310,10 @@ public final class LegacyConfigScreen extends GuiScreen {
             case 31:
                 enabled = !enabled;
                 button.displayString = enabled ? "Physical output: ENABLED" : "Physical output: DISABLED";
+                return;
+            case 44:
+                linearDamage = !linearDamage;
+                button.displayString = toggle("Linear intensity for lost hearts", linearDamage);
                 return;
             case 40: onDamage = !onDamage; button.displayString = toggle("On damage", onDamage); return;
             case 41: onDeath = !onDeath; button.displayString = toggle("On death", onDeath); return;
@@ -323,6 +376,13 @@ public final class LegacyConfigScreen extends GuiScreen {
             fontRenderer.drawString("Chat trigger phrase (received or sent chat)", left, 164, 0xDDDDDD);
             if (message.isEmpty()) drawCenteredString(fontRenderer,
                 "Choose which events can trigger OpenShock.", mid, height - 43, 0xAACCFF);
+        } else if (page == Page.SCALING) {
+            fontRenderer.drawString("Starting shock intensity (%)", left, 101, 0xDDDDDD);
+            fontRenderer.drawString("Maximum reached after this many lost hearts", left, 141, 0xDDDDDD);
+            if (message.isEmpty()) {
+                drawCenteredString(fontRenderer, "Set maximum via Limits > Damage intensity.", mid, 180, 0xAACCFF);
+                drawCenteredString(fontRenderer, "Larger hits give proportionally stronger output.", mid, 192, 0xDDDDDD);
+            }
         } else {
             int col = (contentWidth - 12) / 2;
             int right = left + col + 12;
@@ -332,9 +392,9 @@ public final class LegacyConfigScreen extends GuiScreen {
             fontRenderer.drawString("Chat intensity (%)", right, 99, 0xDDDDDD);
             fontRenderer.drawString("Duration (ms)", left, 130, 0xDDDDDD);
             fontRenderer.drawString("Cooldown (ms)", right, 130, 0xDDDDDD);
-            fontRenderer.drawString("Min damage (hearts)", left, 161, 0xDDDDDD);
+            fontRenderer.drawString("Min damage (0 = all hits)", left, 161, 0xDDDDDD);
             if (message.isEmpty()) drawCenteredString(fontRenderer,
-                "Intensity max 50%, duration max 2000ms, cooldown min 3000ms.",
+                "Range: max 100%, duration 30000ms, cooldown can be 0.",
                 mid, height - 43, 0xAACCFF);
         }
 

@@ -17,9 +17,12 @@ public final class LegacyConfig {
     private LegacyConfig() {}
     public static boolean enabled = false;
     public static boolean onDamage = true, onDeath = true, onLevelUp = false, onChat = false;
+    public static boolean linearDamage = true;
+    public static int damageIntensityMin = 5;
+    public static float linearFullHearts = 10.0F;
     public static int damageIntensity = 20, deathIntensity = 30, levelIntensity = 15, chatIntensity = 15;
     public static int durationMs = 500, cooldownMs = 3000;
-    public static float minDamageHearts = 1.0F;
+    public static float minDamageHearts = 0.0F;
     public static String chatPhrase = "shock me";
     public static String apiBaseUrl = "https://api.openshock.app", apiToken = "", shockerIds = "";
 
@@ -50,21 +53,31 @@ public final class LegacyConfig {
         Properties p = read(behaviorPath());
         enabled = bool(p, "enabled", false);
         onDamage = bool(p, "onDamage", true);
+        linearDamage = bool(p, "linearDamage", true);
+        damageIntensityMin = number(p, "damageIntensityMin", 5, 0, 100);
         onDeath = bool(p, "onDeath", true);
         onLevelUp = bool(p, "onLevelUp", false);
         onChat = bool(p, "onChat", false);
         chatPhrase = p.getProperty("chatPhrase", "shock me");
-        damageIntensity = number(p, "damageIntensity", 20, 0, 50);
-        deathIntensity = number(p, "deathIntensity", 30, 0, 50);
-        levelIntensity = number(p, "levelIntensity", 15, 0, 50);
-        chatIntensity = number(p, "chatIntensity", 15, 0, 50);
-        durationMs = number(p, "durationMs", 500, 100, 2000);
-        cooldownMs = number(p, "cooldownMs", 3000, 3000, 60000);
+        damageIntensity = number(p, "damageIntensity", 20, 0, 100);
+        deathIntensity = number(p, "deathIntensity", 30, 0, 100);
+        levelIntensity = number(p, "levelIntensity", 15, 0, 100);
+        chatIntensity = number(p, "chatIntensity", 15, 0, 100);
+        durationMs = number(p, "durationMs", 500, 100, 30000);
+        cooldownMs = number(p, "cooldownMs", 3000, 0, 60000);
         try {
-            minDamageHearts = Math.max(0.5F, Math.min(20F,
-                Float.parseFloat(p.getProperty("minDamageHearts", "1.0"))));
+            minDamageHearts = Math.max(0F, Math.min(20F,
+                Float.parseFloat(p.getProperty("minDamageHearts", "0.0"))));
+            if (!Float.isFinite(minDamageHearts)) minDamageHearts = 0F;
         } catch (NumberFormatException ex) {
-            minDamageHearts = 1.0F;
+            minDamageHearts = 0.0F;
+        }
+        try {
+            linearFullHearts = Float.parseFloat(p.getProperty("linearFullHearts", "10.0"));
+            if (!Float.isFinite(linearFullHearts)) linearFullHearts = 10F;
+            linearFullHearts = Math.max(0.5F, Math.min(100F, linearFullHearts));
+        } catch (NumberFormatException ex) {
+            linearFullHearts = 10.0F;
         }
         Properties account = read(accountPath());
         apiBaseUrl = account.getProperty("apiBaseUrl", apiBaseUrl).trim();
@@ -76,6 +89,9 @@ public final class LegacyConfig {
         Properties p = new Properties();
         p.setProperty("enabled", String.valueOf(enabled));
         p.setProperty("onDamage", String.valueOf(onDamage));
+        p.setProperty("linearDamage", String.valueOf(linearDamage));
+        p.setProperty("damageIntensityMin", String.valueOf(damageIntensityMin));
+        p.setProperty("linearFullHearts", String.valueOf(linearFullHearts));
         p.setProperty("onDeath", String.valueOf(onDeath));
         p.setProperty("onLevelUp", String.valueOf(onLevelUp));
         p.setProperty("onChat", String.valueOf(onChat));
