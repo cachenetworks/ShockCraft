@@ -25,13 +25,38 @@ public final class LegacyOpenShock {
     private static final AtomicBoolean BUSY = new AtomicBoolean(false);
     private static long lastSentAt;
 
+    public enum SubmitResult {
+        QUEUED("request queued"),
+        DISABLED("physical output OFF"),
+        NO_ACCOUNT("API token or shocker ID missing"),
+        ZERO_INTENSITY("intensity set to 0"),
+        COOLDOWN("cooldown active"),
+        BUSY("previous request still in progress");
+
+        public final String message;
+        SubmitResult(String message) { this.message = message; }
+    }
+
+    /** Local debug status, never includes API keys, shocker IDs or payloads. */
+    public static void showDiagnostic(String message) {
+        if (!LegacyConfig.showDamageDiagnostics) return;
+        Minecraft.getMinecraft().addScheduledTask(() -> {
+            if (Minecraft.getMinecraft().player != null) {
+                Minecraft.getMinecraft().player.sendStatusMessage(
+                    new TextComponentString("ShockCraft: " + message), true);
+            }
+        });
+    }
+
     /** Invoked exclusively from client game events, not the HTTP worker thread. */
-    public static void fire(String reason, int requestedIntensity) {
-        if (!LegacyConfig.enabled || LegacyConfig.apiToken.isEmpty()
-            || LegacyConfig.shockerIds.trim().isEmpty() || requestedIntensity <= 0) return;
+    public static SubmitResult fire(String reason, int requestedIntensity) {
+        if (!LegacyConfig.enabled) return SubmitResult.DISABLED;
+        if (LegacyConfig.apiToken.isEmpty() || LegacyConfig.shockerIds.trim().isEmpty())
+            return SubmitResult.NO_ACCOUNT;
+        if (requestedIntensity <= 0) return SubmitResult.ZERO_INTENSITY;
         final long now = System.currentTimeMillis();
-        if (now - lastSentAt < Math.max(0, LegacyConfig.cooldownMs)) return;
-        if (!BUSY.compareAndSet(false, true)) return;
+        if (now - lastSentAt < Math.max(0, LegacyConfig.cooldownMs)) return SubmitResult.COOLDOWN;
+        if (!BUSY.compareAndSet(false, true)) return SubmitResult.BUSY;
         lastSentAt = now;
 
         final int intensity = Math.max(1, Math.min(100, requestedIntensity));
@@ -92,6 +117,7 @@ public final class LegacyOpenShock {
                         });
                     } else {
                         LegacyShockCraft.LOG.warn("OpenShock returned HTTP {}", code);
+                        showDiagnostic("OpenShock rejected request (HTTP " + code + ")");
                     }
                     InputStream stream = code >= 400 ? conn.getErrorStream() : conn.getInputStream();
                     if (stream != null) stream.close();
@@ -101,9 +127,11 @@ public final class LegacyOpenShock {
             } catch (Exception e) {
                 // Never write credentials, headers, shocker IDs or payloads into game logs.
                 LegacyShockCraft.LOG.warn("OpenShock request failed ({})", e.getClass().getSimpleName());
+                showDiagnostic("OpenShock request error (" + e.getClass().getSimpleName() + ")");
             } finally {
                 BUSY.set(false);
             }
         });
+        return SubmitResult.QUEUED;
     }
 }
