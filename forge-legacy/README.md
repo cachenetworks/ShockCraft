@@ -84,6 +84,23 @@ for reliable PvP attacker names.
 
 ### Damage trigger troubleshooting
 
+When **Damage diagnostics** is enabled (Scaling tab), a compact HUD is
+displayed in survival mode with the current HP, whether `On damage` and
+`Physical output` are enabled, a growing client-tick counter, and the last
+detection result. This HUD does not contain API tokens or shocker IDs. Test
+with F1 (hide HUD) **off**. If the HUD/tick counter does not appear, check that
+the updated jar is actually installed, there is only one ShockCraft jar in
+`mods/`, and the Forge client loaded the mod.
+
+The new diagnostics run even with `On damage` disabled, so it can explain why
+a health decrease was ignored. Hurt animations with no measurable loss of
+hearts are diagnostic-only; they never send physical output. A dropped
+`/kill` health value or death with `On death` enabled uses the separate
+death trigger, not necessarily the damage trigger. Keep physical output OFF
+while determining which event fires, and test API requests with a mock service
+before enabling a physical device.
+
+
 The Scaling tab has a **Damage diagnostics** toggle, enabled by default
 during this beta. After damage in a world, the action bar explains whether
 health loss was detected, a legacy saved minimum damage threshold filtered
