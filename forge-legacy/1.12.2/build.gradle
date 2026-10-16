@@ -1,4 +1,6 @@
-// Standalone Java 8 / ForgeGradle 2.3 build. Not part of the modern Stonecutter targets.
+// Standalone Java 8 / ForgeGradle 2.3 build. Not part of modern Stonecutter.
+// FG2.3 requires the historical -userdev.jar artifact: Forge 2847 has it;
+// newer 1.12.2 releases publish -userdev3.jar and cannot build here.
 buildscript {
     repositories {
         mavenCentral()
@@ -16,7 +18,7 @@ sourceCompatibility = targetCompatibility = '1.8'
 compileJava.options.encoding = 'UTF-8'
 
 minecraft {
-    version = '1.12.2-14.23.5.2864'
+    version = '1.12.2-14.23.5.2847'
     mappings = 'stable_39'
     runDir = 'run'
     makeObfSourceJar = false
