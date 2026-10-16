@@ -7,6 +7,7 @@ import net.minecraft.util.DamageSource;
 import net.minecraft.util.text.ChatType;
 import net.minecraftforge.client.event.ClientChatEvent;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
+import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.client.registry.ClientRegistry;
 import net.minecraftforge.fml.common.Mod;
@@ -47,18 +48,48 @@ public final class LegacyShockCraft {
         float previousHealth;
         int previousLevel;
         boolean wasDead;
+        int previousHurtTime;
+        long debugTicks;
+
+        /**
+         * Visible even when no damage event fires: confirms the mod is loaded,
+         * client ticks are running and the current saved settings are active.
+         * This never displays the API token, device IDs or full account URL.
+         */
+        @SubscribeEvent
+        public void renderDiagnostics(RenderGameOverlayEvent.Text event) {
+            if (!LegacyConfig.showDamageDiagnostics) return;
+            Minecraft mc = Minecraft.getMinecraft();
+            EntityPlayerSP player = mc.player;
+            if (player == null) return;
+            String playerState = player.isCreative() || player.isSpectator()
+                ? "creative/spectator - ignored"
+                : mc.isGamePaused() ? "paused" : "watching";
+            event.getLeft().add("§aShockCraft 1.12.2 §7| §f" + playerState
+                + " §7| ticks: " + debugTicks);
+            event.getLeft().add("§7HP §f" + hearts(player.getHealth() / 2.0F)
+                + " hearts §7| damage " + (LegacyConfig.onDamage ? "§aON" : "§cOFF")
+                + " §7| output " + (LegacyConfig.enabled ? "§aON" : "§cOFF")
+                + " §7| Min damage " + LegacyConfig.minDamageHearts + " hearts");
+            event.getLeft().add("§7Last: §f" + LegacyOpenShock.lastDiagnostic());
+        }
 
         @SubscribeEvent
         public void tick(TickEvent.ClientTickEvent event) {
             if (event.phase != TickEvent.Phase.END) return;
             Minecraft mc = Minecraft.getMinecraft();
+            debugTicks++;
             openIfPressed(mc);
 
             EntityPlayerSP player = mc.player;
-            // Keep tracking while inventories, chests or other non-pausing screens are
-            // open. Multiplayer damage continues in those screens. Only a genuinely
-            // paused singleplayer world should reset health tracking.
-            if (player == null || mc.isGamePaused() || player.isCreative() || player.isSpectator()) {
+            // Keep baselines across temporary screens. An inventory does NOT
+            // pause multiplayer, and a paused singleplayer game cannot take hits.
+            if (player == null) {
+                previousPlayer = null;
+                return;
+            }
+            if (mc.isGamePaused()) return;
+            if (player.isCreative() || player.isSpectator()) {
                 previousPlayer = null;
                 return;
             }
@@ -66,21 +97,27 @@ public final class LegacyShockCraft {
                 previousPlayer = player;
                 previousHealth = player.getHealth();
                 previousLevel = player.experienceLevel;
+                previousHurtTime = player.hurtTime;
                 wasDead = false;
+                LegacyOpenShock.showDiagnostic("Client tracking started; hurt a survival player to test");
                 return;
             }
             float health = player.getHealth();
             int level = player.experienceLevel;
             boolean dead = player.isDead || health <= 0.0F;
             if (dead && !wasDead && LegacyConfig.onDeath) {
-                LegacyOpenShock.fire("Death: " + damageName(player.getLastDamageSource()),
-                    LegacyConfig.deathIntensity);
-            } else if (health < previousHealth && LegacyConfig.onDamage) {
+                LegacyOpenShock.SubmitResult result = LegacyOpenShock.fire(
+                    "Death: " + damageName(player.getLastDamageSource()), LegacyConfig.deathIntensity);
+                LegacyOpenShock.showDiagnostic("Death detected: " + result.message);
+            } else if (health < previousHealth) {
                 // Every real health decrease counts when the threshold is zero,
                 // including weak PvP hits and lethal damage if death-trigger is off.
                 float heartsLost = (previousHealth - health) / 2.0F;
                 if (heartsLost > 0) {
-                    if (heartsLost < LegacyConfig.minDamageHearts) {
+                    if (!LegacyConfig.onDamage) {
+                        LegacyOpenShock.showDiagnostic("Lost " + hearts(heartsLost)
+                            + " hearts; On damage is OFF in Triggers");
+                    } else if (heartsLost < LegacyConfig.minDamageHearts) {
                         LegacyOpenShock.showDiagnostic("Detected " + hearts(heartsLost)
                             + " hearts lost, below Min damage " + LegacyConfig.minDamageHearts);
                     } else {
@@ -96,6 +133,11 @@ public final class LegacyShockCraft {
                                 ? " (" + intensity + "%)" : ""));
                     }
                 }
+            } else if (player.hurtTime > 0 && previousHurtTime <= 0) {
+                // A hurt animation alone is NOT an accurate amount of damage.
+                // Never fire a physical request without confirmed health loss.
+                LegacyOpenShock.showDiagnostic("Hurt animation detected, but HP did not decrease"
+                    + " (absorption/invulnerability/health sync)");
             }
             if (!dead && level > previousLevel && LegacyConfig.onLevelUp) {
                 LegacyOpenShock.fire("XP Level Up (" + (level - previousLevel) + ")",
@@ -103,6 +145,7 @@ public final class LegacyShockCraft {
             }
             previousHealth = health;
             previousLevel = level;
+            previousHurtTime = player.hurtTime;
             wasDead = dead;
         }
 
