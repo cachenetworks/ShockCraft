@@ -55,9 +55,10 @@ public final class LegacyShockCraft {
             openIfPressed(mc);
 
             EntityPlayerSP player = mc.player;
-            // Do not mistake respawns, world switches and menu transitions for damage.
-            if (player == null || (mc.currentScreen != null && !(mc.currentScreen instanceof net.minecraft.client.gui.GuiGameOver))
-                || player.isCreative() || player.isSpectator()) {
+            // Keep tracking while inventories, chests or other non-pausing screens are
+            // open. Multiplayer damage continues in those screens. Only a genuinely
+            // paused singleplayer world should reset health tracking.
+            if (player == null || mc.isGamePaused() || player.isCreative() || player.isSpectator()) {
                 previousPlayer = null;
                 return;
             }
@@ -78,14 +79,22 @@ public final class LegacyShockCraft {
                 // Every real health decrease counts when the threshold is zero,
                 // including weak PvP hits and lethal damage if death-trigger is off.
                 float heartsLost = (previousHealth - health) / 2.0F;
-                if (heartsLost > 0 && heartsLost >= LegacyConfig.minDamageHearts) {
-                    int intensity = LegacyConfig.linearDamage
-                        ? DamageScaling.linear(heartsLost, LegacyConfig.damageIntensityMin,
-                            LegacyConfig.damageIntensity, LegacyConfig.linearFullHearts)
-                        : LegacyConfig.damageIntensity;
-                    String label = "Damage (" + String.format(java.util.Locale.ROOT, "%.1f", heartsLost)
-                        + " hearts): " + damageName(player.getLastDamageSource());
-                    LegacyOpenShock.fire(label, intensity);
+                if (heartsLost > 0) {
+                    if (heartsLost < LegacyConfig.minDamageHearts) {
+                        LegacyOpenShock.showDiagnostic("Detected " + hearts(heartsLost)
+                            + " hearts lost, below Min damage " + LegacyConfig.minDamageHearts);
+                    } else {
+                        int intensity = LegacyConfig.linearDamage
+                            ? DamageScaling.linear(heartsLost, LegacyConfig.damageIntensityMin,
+                                LegacyConfig.damageIntensity, LegacyConfig.linearFullHearts)
+                            : LegacyConfig.damageIntensity;
+                        String label = "Damage (" + hearts(heartsLost)
+                            + " hearts): " + damageName(player.getLastDamageSource());
+                        LegacyOpenShock.SubmitResult result = LegacyOpenShock.fire(label, intensity);
+                        LegacyOpenShock.showDiagnostic("Damage " + hearts(heartsLost) + " hearts: "
+                            + result.message + (result == LegacyOpenShock.SubmitResult.QUEUED
+                                ? " (" + intensity + "%)" : ""));
+                    }
                 }
             }
             if (!dead && level > previousLevel && LegacyConfig.onLevelUp) {
@@ -128,6 +137,10 @@ public final class LegacyShockCraft {
                 LegacyConfig.chatPhrase.toLowerCase(java.util.Locale.ROOT))) {
                 LegacyOpenShock.fire("Chat Phrase", LegacyConfig.chatIntensity);
             }
+        }
+
+        private static String hearts(float value) {
+            return String.format(java.util.Locale.ROOT, "%.1f", value);
         }
 
         private static String damageName(DamageSource source) {
