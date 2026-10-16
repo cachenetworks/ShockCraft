@@ -1,0 +1,23 @@
+// Standalone Java 8 / ForgeGradle 2.3 build. Not part of the modern Stonecutter targets.
+buildscript {
+    repositories {
+        mavenCentral()
+        maven { url = 'https://maven.minecraftforge.net' }
+    }
+    dependencies {
+        classpath 'com.anatawa12.forge:ForgeGradle:2.3-1.0.1'
+    }
+}
+apply plugin: 'net.minecraftforge.gradle.forge'
+group = 'openshock.integrations.minecraft'
+version = '2.0.0-beta.1-legacy.1'
+archivesBaseName = 'ShockCraft-forge-1.12.2'
+sourceCompatibility = targetCompatibility = '1.8'
+compileJava.options.encoding = 'UTF-8'
+
+minecraft {
+    version = '1.12.2-14.23.5.2864'
+    mappings = 'stable_39'
+    runDir = 'run'
+    makeObfSourceJar = false
+}

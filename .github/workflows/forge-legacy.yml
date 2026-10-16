@@ -1,0 +1,40 @@
+name: Forge 1.12.2 (legacy)
+
+on:
+  push:
+    paths:
+      - 'forge-legacy/**'
+      - '.github/workflows/forge-legacy.yml'
+  pull_request:
+    paths:
+      - 'forge-legacy/**'
+      - '.github/workflows/forge-legacy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-1-12-2:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+      - name: Java 8
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '8'
+      - name: Gradle 4.10.3
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '4.10.3'
+      - name: Build legacy Forge jar
+        working-directory: forge-legacy/1.12.2
+        run: gradle --no-daemon --stacktrace clean build
+      - name: Upload build
+        uses: actions/upload-artifact@v4
+        with:
+          name: shockcraft-forge-1.12.2
+          path: forge-legacy/1.12.2/build/libs/*.jar
+          if-no-files-found: error
