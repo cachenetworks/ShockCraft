@@ -128,9 +128,13 @@ public final class LegacyShockCraft {
                         String label = "Damage (" + hearts(heartsLost)
                             + " hearts): " + damageName(player.getLastDamageSource());
                         LegacyOpenShock.SubmitResult result = LegacyOpenShock.fire(label, intensity);
-                        LegacyOpenShock.showDiagnostic("Damage " + hearts(heartsLost) + " hearts: "
-                            + result.message + (result == LegacyOpenShock.SubmitResult.QUEUED
-                                ? " (" + intensity + "%)" : ""));
+                        if (result != LegacyOpenShock.SubmitResult.BACKEND_ERROR) {
+                            // Preserve the HTTP 500 trace/correlation ID in the HUD
+                            // while the API 5xx backoff prevents another command.
+                            LegacyOpenShock.showDiagnostic("Damage " + hearts(heartsLost) + " hearts: "
+                                + result.message + (result == LegacyOpenShock.SubmitResult.QUEUED
+                                    ? " (" + intensity + "%)" : ""));
+                        }
                     }
                 }
             } else if (player.hurtTime > 0 && previousHurtTime <= 0) {
