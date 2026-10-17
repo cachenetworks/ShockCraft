@@ -36,11 +36,27 @@ public final class LegacyOpenShock {
     private static long lastSentAt;
 
     // Persistent local telemetry for the debug HUD. No account secrets.
-    private static volatile String lastDiagnostic = "Waiting for client tick";
+    private static volatile String lastDiagnostic = "No API request yet";
     private static volatile long lastDiagnosticAt;
+    private static volatile String lastHealthEvent = "Waiting for damage";
+    private static volatile long lastHealthEventAt;
 
     public static String lastDiagnostic() { return lastDiagnostic; }
     public static long lastDiagnosticAt() { return lastDiagnosticAt; }
+    public static String lastHealthEvent() { return lastHealthEvent; }
+    public static long lastHealthEventAt() { return lastHealthEventAt; }
+
+    /** 5xx lockout is separate from Minecraft's damage event detection. */
+    public static long backendHoldSeconds() {
+        long remaining = backendErrorUntil - System.currentTimeMillis();
+        return remaining <= 0 ? 0L : (remaining + 999L) / 1000L;
+    }
+
+    /** Records detection even if physical output is OFF or the server is unavailable. */
+    public static void reportHealthEvent(String description) {
+        lastHealthEvent = description;
+        lastHealthEventAt = System.currentTimeMillis();
+    }
 
     public enum SubmitResult {
         QUEUED("request queued"),
