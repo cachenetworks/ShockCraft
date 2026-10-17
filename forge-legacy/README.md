@@ -142,6 +142,30 @@ administrator, unlike an API token or shocker ID. Server response bodies
 are never printed unfiltered. Physical requests are paused for 60 seconds
 after a 5xx; they are **never retried automatically**.
 
+### Diagnosing "one death and then nothing"
+
+Death deliberately fires once per **life**. On respawn, the detector starts a
+fresh health baseline. A previous **HTTP 500** is more important: the backend
+could have received the control even while returning an error, so ShockCraft
+holds further physical requests for 60 seconds and never automatically retries.
+
+The debug HUD now has **two separate lines**:
+
+- **Last damage:** shows damage/death/hurt animation detection even when
+  physical requests are disabled, in cooldown, or held after an HTTP 500.
+- **Last API result:** preserves the last server response, including safe
+  trace/CF-Ray identifiers. The HUD also shows the remaining 5xx hold time.
+
+For a safe test, turn **Physical output OFF**, keep **Damage diagnostics ON**,
+then take ordinary (nonlethal) health damage in Survival. You should see
+"Lost X hearts -> physical output OFF". If it says "Hurt animation; no HP
+loss", check absorption/invulnerability and watch HP in the HUD. If the HUD
+sees damage but the API shows HTTP 500, the Minecraft damage detector is
+working and the remaining failure is at the OpenShock control path.
+
+For real-device safety, do not repeatedly send physical control commands
+while the API is returning 500. A 500 is not proof that the device did nothing.
+
 ### Other Forge versions: implementation tracker
 
 This table is **a roadmap, not a list of working jars**. Every supported version
