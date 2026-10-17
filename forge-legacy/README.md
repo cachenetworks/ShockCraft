@@ -118,6 +118,30 @@ A successful Gradle build and mock/automated tests do not replace an
 in-game test on your Forge 1.12.2 client. Do not share your API token in
 logs or screenshots.
 
+### Troubleshoot an HTTP 500 without sending another shock
+
+A `500` means the API received the control request but failed to process
+it successfully. **A 500 does not prove whether a physical device acted.**
+Avoid repeating control requests with a device connected just to test it.
+
+Go to **Mods > ShockCraft > Config > Account > Check API**.
+This sends an authenticated **GET /1/shockers/own** request only, with
+**no device-control command**. It can distinguish a working API token
+from a backend problem limited to the control endpoint:
+
+- **HTTP 200:** token and read-only API request work; the physical
+  control endpoint or backend processing still needs investigation.
+- **HTTP 401/403:** check the API token and access permissions.
+- **HTTP 500:** even the read-only endpoint failed; the backend may
+  have a broader issue.
+- **Connection error:** check your configured HTTPS API URL or network.
+
+After a control error, the diagnostic HUD can display a short request trace
+ID or CF-Ray header from the response. This is safe to report to a backend
+administrator, unlike an API token or shocker ID. Server response bodies
+are never printed unfiltered. Physical requests are paused for 60 seconds
+after a 5xx; they are **never retried automatically**.
+
 ### Other Forge versions: implementation tracker
 
 This table is **a roadmap, not a list of working jars**. Every supported version
