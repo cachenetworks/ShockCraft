@@ -92,8 +92,10 @@ public final class LegacyConfigScreen extends GuiScreen {
             idsField = field(22, left, 158, contentWidth, ids, 1024);
             buttonList.add(new GuiButton(30, left + contentWidth - 71, 120, 71, 20,
                 editingToken ? "Hide" : "Edit token"));
-            buttonList.add(new GuiButton(31, left, 181, contentWidth, 20,
+            buttonList.add(new GuiButton(31, left, 181, contentWidth - 91, 20,
                 enabled ? "Physical output: ENABLED" : "Physical output: DISABLED"));
+            buttonList.add(new GuiButton(32, left + contentWidth - 87, 181, 87, 20,
+                "Check API"));
         } else if (page == Page.TRIGGERS) {
             int toggleWidth = contentWidth;
             buttonList.add(new GuiButton(40, left, 67, toggleWidth, 20, toggle("On damage", onDamage)));
@@ -315,6 +317,16 @@ public final class LegacyConfigScreen extends GuiScreen {
                 enabled = !enabled;
                 button.displayString = enabled ? "Physical output: ENABLED" : "Physical output: DISABLED";
                 return;
+            case 32:
+                captureCurrentFields();
+                message = "Checking token via read-only GET (no control sent)...";
+                messageColor = 0xAACCFF;
+                LegacyOpenShock.checkConnection(url, token, result -> {
+                    message = result;
+                    messageColor = result.startsWith("API token accepted")
+                        ? 0x77FF77 : 0xFF7777;
+                });
+                return;
             case 44:
                 linearDamage = !linearDamage;
                 button.displayString = toggle("Linear intensity for lost hearts", linearDamage);
@@ -408,7 +420,10 @@ public final class LegacyConfigScreen extends GuiScreen {
         for (GuiTextField field : fields) {
             if (field.getVisible()) field.drawTextBox();
         }
-        if (!message.isEmpty()) drawCenteredString(fontRenderer, message, mid, height - 43, messageColor);
+        if (!message.isEmpty()) {
+            // Long server trace IDs must wrap rather than disappear off-screen.
+            fontRenderer.drawSplitString(message, left, height - 55, contentWidth, messageColor);
+        }
         super.drawScreen(mouseX, mouseY, partialTicks);
     }
 
