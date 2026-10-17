@@ -71,7 +71,13 @@ public final class LegacyShockCraft {
                 + " hearts §7| damage " + (LegacyConfig.onDamage ? "§aON" : "§cOFF")
                 + " §7| output " + (LegacyConfig.enabled ? "§aON" : "§cOFF")
                 + " §7| Min damage " + LegacyConfig.minDamageHearts + " hearts");
-            event.getLeft().add("§7Last: §f" + LegacyOpenShock.lastDiagnostic());
+            event.getLeft().add("§7Last damage: §f" + LegacyOpenShock.lastHealthEvent());
+            event.getLeft().add("§7Last API result: §f" + LegacyOpenShock.lastDiagnostic());
+            long remaining = LegacyOpenShock.backendHoldSeconds();
+            if (remaining > 0) {
+                event.getLeft().add("§cAPI HTTP 5xx: physical requests held for "
+                    + remaining + " more seconds");
+            }
         }
 
         @SubscribeEvent
@@ -99,7 +105,7 @@ public final class LegacyShockCraft {
                 previousLevel = player.experienceLevel;
                 previousHurtTime = player.hurtTime;
                 wasDead = false;
-                LegacyOpenShock.showDiagnostic("Client tracking started; hurt a survival player to test");
+                LegacyOpenShock.reportHealthEvent("Tracking survival player; waiting for HP loss");
                 return;
             }
             float health = player.getHealth();
@@ -108,18 +114,18 @@ public final class LegacyShockCraft {
             if (dead && !wasDead && LegacyConfig.onDeath) {
                 LegacyOpenShock.SubmitResult result = LegacyOpenShock.fire(
                     "Death: " + damageName(player.getLastDamageSource()), LegacyConfig.deathIntensity);
-                LegacyOpenShock.showDiagnostic("Death detected: " + result.message);
+                LegacyOpenShock.reportHealthEvent("Death detected -> " + result.message);
             } else if (health < previousHealth) {
                 // Every real health decrease counts when the threshold is zero,
                 // including weak PvP hits and lethal damage if death-trigger is off.
                 float heartsLost = (previousHealth - health) / 2.0F;
                 if (heartsLost > 0) {
                     if (!LegacyConfig.onDamage) {
-                        LegacyOpenShock.showDiagnostic("Lost " + hearts(heartsLost)
+                        LegacyOpenShock.reportHealthEvent("Lost " + hearts(heartsLost)
                             + " hearts; On damage is OFF in Triggers");
                     } else if (heartsLost < LegacyConfig.minDamageHearts) {
-                        LegacyOpenShock.showDiagnostic("Detected " + hearts(heartsLost)
-                            + " hearts lost, below Min damage " + LegacyConfig.minDamageHearts);
+                        LegacyOpenShock.reportHealthEvent("Lost " + hearts(heartsLost)
+                            + " hearts; below Min damage " + LegacyConfig.minDamageHearts);
                     } else {
                         int intensity = LegacyConfig.linearDamage
                             ? DamageScaling.linear(heartsLost, LegacyConfig.damageIntensityMin,
@@ -128,20 +134,19 @@ public final class LegacyShockCraft {
                         String label = "Damage (" + hearts(heartsLost)
                             + " hearts): " + damageName(player.getLastDamageSource());
                         LegacyOpenShock.SubmitResult result = LegacyOpenShock.fire(label, intensity);
-                        if (result != LegacyOpenShock.SubmitResult.BACKEND_ERROR) {
-                            // Preserve the HTTP 500 trace/correlation ID in the HUD
-                            // while the API 5xx backoff prevents another command.
-                            LegacyOpenShock.showDiagnostic("Damage " + hearts(heartsLost) + " hearts: "
-                                + result.message + (result == LegacyOpenShock.SubmitResult.QUEUED
-                                    ? " (" + intensity + "%)" : ""));
-                        }
+                        // Preserve the prior HTTP error while recording every hit,
+                        // including ones suppressed by server errors or cooldowns.
+                        LegacyOpenShock.reportHealthEvent("Lost " + hearts(heartsLost)
+                            + " hearts -> " + result.message
+                            + (result == LegacyOpenShock.SubmitResult.QUEUED
+                                ? " (" + intensity + "%)" : ""));
                     }
                 }
             } else if (player.hurtTime > 0 && previousHurtTime <= 0) {
                 // A hurt animation alone is NOT an accurate amount of damage.
                 // Never fire a physical request without confirmed health loss.
-                LegacyOpenShock.showDiagnostic("Hurt animation detected, but HP did not decrease"
-                    + " (absorption/invulnerability/health sync)");
+                LegacyOpenShock.reportHealthEvent("Hurt animation; no HP loss measured"
+                    + " (absorption/invulnerability/sync)");
             }
             if (!dead && level > previousLevel && LegacyConfig.onLevelUp) {
                 LegacyOpenShock.fire("XP Level Up (" + (level - previousLevel) + ")",
