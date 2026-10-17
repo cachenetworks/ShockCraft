@@ -13,6 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 
 /** Async Java 8 HTTPS client; no TLS bypass or delayed backlog of device actions. */
 public final class LegacyOpenShock {
@@ -23,6 +24,15 @@ public final class LegacyOpenShock {
         return thread;
     });
     private static final AtomicBoolean BUSY = new AtomicBoolean(false);
+    private static final AtomicBoolean CHECK_BUSY = new AtomicBoolean(false);
+    private static final ExecutorService CHECKS = Executors.newSingleThreadExecutor(task -> {
+        Thread thread = new Thread(task, "shockcraft-api-check");
+        thread.setDaemon(true);
+        return thread;
+    });
+    // After HTTP 5xx, wait before allowing another physical request.
+    // A failed API response does not prove the device did not receive a command.
+    private static volatile long backendErrorUntil = 0L;
     private static long lastSentAt;
 
     // Persistent local telemetry for the debug HUD. No account secrets.
@@ -38,7 +48,8 @@ public final class LegacyOpenShock {
         NO_ACCOUNT("API token or shocker ID missing"),
         ZERO_INTENSITY("intensity set to 0"),
         COOLDOWN("cooldown active"),
-        BUSY("previous request still in progress");
+        BUSY("previous request still in progress"),
+        BACKEND_ERROR("server error; physical commands paused temporarily");
 
         public final String message;
         SubmitResult(String message) { this.message = message; }
@@ -64,6 +75,7 @@ public final class LegacyOpenShock {
             return SubmitResult.NO_ACCOUNT;
         if (requestedIntensity <= 0) return SubmitResult.ZERO_INTENSITY;
         final long now = System.currentTimeMillis();
+        if (now < backendErrorUntil) return SubmitResult.BACKEND_ERROR;
         if (now - lastSentAt < Math.max(0, LegacyConfig.cooldownMs)) return SubmitResult.COOLDOWN;
         if (!BUSY.compareAndSet(false, true)) return SubmitResult.BUSY;
         lastSentAt = now;
@@ -125,11 +137,19 @@ public final class LegacyOpenShock {
                             }
                         });
                     } else {
-                        LegacyShockCraft.LOG.warn("OpenShock returned HTTP {}", code);
-                        showDiagnostic("OpenShock rejected request (HTTP " + code + ")");
+                        try (InputStream errorBody = conn.getErrorStream()) {
+                            String details = LegacyErrorDetails.describe(
+                                code, conn.getContentType(), errorBody,
+                                conn.getHeaderField("CF-Ray"),
+                                conn.getHeaderField("X-Request-ID"));
+                            LegacyShockCraft.LOG.warn("OpenShock control request: {}", details);
+                            showDiagnostic("API control: " + details);
+                        }
+                        if (code >= 500) {
+                            // Do not immediately send another command after ambiguous 5xx.
+                            backendErrorUntil = System.currentTimeMillis() + 60000L;
+                        }
                     }
-                    InputStream stream = code >= 400 ? conn.getErrorStream() : conn.getInputStream();
-                    if (stream != null) stream.close();
                 } finally {
                     conn.disconnect();
                 }
@@ -142,5 +162,57 @@ public final class LegacyOpenShock {
             }
         });
         return SubmitResult.QUEUED;
+    }
+
+    /** Read-only authentication probe. Does not send a shock or any control. */
+    public static void checkConnection(String baseUrl, String apiToken, Consumer<String> callback) {
+        if (apiToken.trim().isEmpty()) {
+            callback.accept("No API token entered");
+            return;
+        }
+        if (!CHECK_BUSY.compareAndSet(false, true)) {
+            callback.accept("API check is already running");
+            return;
+        }
+        CHECKS.execute(() -> {
+            String status;
+            try {
+                URI url = URI.create(baseUrl.trim().replaceAll("/+$", "") + "/1/shockers/own");
+                if (!"https".equalsIgnoreCase(url.getScheme()) || url.getHost() == null
+                    || url.getUserInfo() != null) {
+                    throw new IllegalArgumentException("HTTPS URL required");
+                }
+                HttpURLConnection conn = (HttpURLConnection) url.toURL().openConnection();
+                try {
+                    conn.setConnectTimeout(10000);
+                    conn.setReadTimeout(15000);
+                    conn.setInstanceFollowRedirects(false);
+                    conn.setRequestMethod("GET");
+                    conn.setRequestProperty("OpenShockToken", apiToken);
+                    conn.setRequestProperty("User-Agent", "ShockCraft-Forge-1.12.2");
+                    int response = conn.getResponseCode();
+                    if (response == 200) {
+                        status = "API token accepted (HTTP 200); no control sent";
+                    } else if (response == 401 || response == 403) {
+                        status = "API token denied (HTTP " + response + "); check permissions";
+                    } else {
+                        try (InputStream body = conn.getErrorStream()) {
+                            status = "API check: " + LegacyErrorDetails.describe(
+                                response, conn.getContentType(), body,
+                                conn.getHeaderField("CF-Ray"),
+                                conn.getHeaderField("X-Request-ID"));
+                        }
+                    }
+                } finally {
+                    conn.disconnect();
+                }
+            } catch (Exception e) {
+                status = "API check failed: " + e.getClass().getSimpleName();
+            } finally {
+                CHECK_BUSY.set(false);
+            }
+            final String result = status;
+            Minecraft.getMinecraft().addScheduledTask(() -> callback.accept(result));
+        });
     }
 }
