@@ -63,6 +63,7 @@ public final class LegacyOpenShock {
         DISABLED("physical output OFF"),
         NO_ACCOUNT("API token or shocker ID missing"),
         ZERO_INTENSITY("intensity set to 0"),
+        INVALID_DURATION("duration must be 300-30000ms; change Limits"),
         COOLDOWN("cooldown active"),
         BUSY("previous request still in progress"),
         BACKEND_ERROR("server error; physical commands paused temporarily");
@@ -90,6 +91,9 @@ public final class LegacyOpenShock {
         if (LegacyConfig.apiToken.isEmpty() || LegacyConfig.shockerIds.trim().isEmpty())
             return SubmitResult.NO_ACCOUNT;
         if (requestedIntensity <= 0) return SubmitResult.ZERO_INTENSITY;
+        // Do not silently increase a physical command from a legacy saved value.
+        if (!LegacyApiConstraints.validDuration(LegacyConfig.durationMs))
+            return SubmitResult.INVALID_DURATION;
         final long now = System.currentTimeMillis();
         if (now < backendErrorUntil) return SubmitResult.BACKEND_ERROR;
         if (now - lastSentAt < Math.max(0, LegacyConfig.cooldownMs)) return SubmitResult.COOLDOWN;
@@ -97,7 +101,7 @@ public final class LegacyOpenShock {
         lastSentAt = now;
 
         final int intensity = Math.max(1, Math.min(100, requestedIntensity));
-        final int durationMs = Math.max(100, Math.min(30000, LegacyConfig.durationMs));
+        final int durationMs = LegacyConfig.durationMs;
         final String baseUrl = LegacyConfig.apiBaseUrl;
         final String token = LegacyConfig.apiToken;
         final String ids = LegacyConfig.shockerIds;
@@ -128,7 +132,7 @@ public final class LegacyOpenShock {
                 }
                 JsonObject payload = new JsonObject();
                 payload.add("shocks", shocks);
-                payload.addProperty("customName", reason + " (ShockCraft-Forge-1.12.2)");
+                payload.addProperty("customName", LegacyApiConstraints.customName(reason));
                 byte[] bytes = payload.toString().getBytes(StandardCharsets.UTF_8);
                 URL url = uri.toURL();
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();

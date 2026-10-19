@@ -168,12 +168,12 @@ public final class LegacyConfigScreen extends GuiScreen {
     private boolean captureLimits() {
         if (limits == null) return true;
         Integer[] values = new Integer[6];
-        final int[] min = {0, 0, 0, 0, 100, 0};
+        final int[] min = {0, 0, 0, 0, LegacyApiConstraints.MIN_DURATION_MS, 0};
         final int[] max = {100, 100, 100, 100, 30000, 60000};
         for (int i = 0; i < values.length; i++) {
             values[i] = parseInt(limits[i], min[i], max[i]);
             if (values[i] == null) {
-                message = "Invalid value: intensity 0-100, duration 100-30000, cooldown 0-60000.";
+                message = "Invalid value: intensity 0-100, duration 300-30000, cooldown 0-60000.";
 
                 messageColor = 0xFF7777;
                 return false;
@@ -413,7 +413,7 @@ public final class LegacyConfigScreen extends GuiScreen {
             fontRenderer.drawString("Cooldown (ms)", right, 130, 0xDDDDDD);
             fontRenderer.drawString("Min damage (0 = all hits)", left, 161, 0xDDDDDD);
             if (message.isEmpty()) drawCenteredString(fontRenderer,
-                "Range: max 100%, duration 30000ms, cooldown can be 0.",
+                "Range: duration 300-30000ms, intensity 0-100%, cooldown >= 0.",
                 mid, height - 43, 0xAACCFF);
         }
 
